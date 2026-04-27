@@ -1,78 +1,99 @@
-# Kernvault
+# 🛡️ Kernvault
 
-> The only learning tool that makes you process information before it gets filed — so your library is made of things you actually know, not things you meant to read.
+> **Intent before capture.** The only learning tool that makes you process information before it gets filed.
 
-## Quick Start — Docker (recommended)
+Kernvault is a local-first, personal knowledge processing studio designed to stop "hoarding" and start "learning." Unlike traditional bookmarking tools, Kernvault forces you to define your learning intent and prove your understanding before content is archived.
+
+---
+
+## ✨ Key Features
+
+*   **🎯 Intent-First Spaces**: Don't just save links. Create "Spaces" with defined learning objectives and structured stages (e.g., "Intro", "Deep Dive", "Review").
+*   **🧘 Forced Reflection**: Integrated "Pause Points" interrupt your reading flow to ensure you're actually absorbing the material, not just skimming.
+*   **✅ Proof of Understanding**: Items aren't marked as "done" just because you scrolled to the bottom. You must summarize your key takeaway in your own words to "graduate" the content.
+*   **🗺️ Learning Maps**: Visualize your progress across different topics and see your knowledge grow over time.
+*   **🏠 Local-First & Private**: Your data never leaves your machine. Powered by SQLite and served locally for maximum speed and privacy.
+
+---
+
+## 🚀 Quick Start
+
+### Option 1: Docker (Recommended)
+The fastest way to get running without managing dependencies.
 
 ```bash
-# Build the image (~2 min first time)
+# Build the image
 npm run docker:build
 
-# Run it — data is persisted in ./data on your host
+# Run it — your data persists in the ./data folder
 npm run docker:run
-# → open http://localhost:3001
+# → Access at http://localhost:3001
 ```
 
-Or manually:
+### Option 2: Manual Development
+Best for customizing the code.
 
 ```bash
-docker build -t kernvault .
-docker run -p 3001:3001 -v "$(pwd)/data:/app/data" kernvault
-```
-
-The `./data` directory on your host holds the SQLite database. It will be created automatically. Back it up like any other file.
-
-## Quick Start — Local development
-
-```bash
-# 1. Install all dependencies (one-time)
+# 1. Install all dependencies
 npm run install:all
 
-# 2. Start backend (port 3001) + frontend dev server (port 5173)
+# 2. Start both Frontend & Backend
 npm start
 # → Frontend: http://localhost:5173
-# → API:      http://localhost:3001/api
+# → Backend API: http://localhost:3001/api
 ```
 
-## What it is
+---
 
-Kernvault is a local-first, personal knowledge processing studio. It helps you:
+## 🛠️ Tech Stack
 
-1. **Define learning intent** before capturing anything (Space creation wizard)
-2. **Organise content** into structured learning Stages
-3. **Read with forced reflection** — Pause Points interrupt reading to keep you engaged
-4. **Prove understanding** — items are only marked "done" after writing a one-sentence summary in your own words
+- **Frontend**: React 18, Vite, Tailwind CSS, Zustand (State Management)
+- **Backend**: Node.js, Express
+- **Database**: SQLite (via `better-sqlite3`)
+- **Content Extraction**: Mozilla Readability
+- **Deployment**: Docker, production-ready static serving via Express
 
-## Architecture
+---
 
-```
+## 📁 Project Structure
+
+```text
 kernvault/
-├── server/    Node.js + Express backend (port 3001)
-│              SQLite via better-sqlite3
-│              Mozilla Readability for URL parsing
-├── client/    React + Vite frontend (port 5173 in dev)
-│              Tailwind CSS, Zustand, React Router v6
-└── data/      kernvault.db (auto-created, gitignored)
+├── client/         # React + Vite frontend
+├── server/         # Express backend + SQLite logic
+├── data/           # Local SQLite database (gitignored)
+└── Dockerfile      # Multi-stage production build
 ```
 
-## Production
+---
 
-```bash
-# Build the client
-cd client && npm run build
+## 📊 Data & Privacy
 
-# Run the server (serves built client too)
-cd server && npm start
-# → Visit http://localhost:3001
-```
+- **No Cloud**: No accounts, no tracking, no telemetry.
+- **SQLite**: Your data is stored in a single file: `data/kernvault.db`.
+- **Exportable**: Easily export your entire library to JSON via the Settings menu or `/api/export` endpoint.
 
-## Data
+---
 
-All data is stored in `data/kernvault.db` (SQLite). To export:
+## 🤝 Contributing
 
-- Via the app: Settings → Export JSON
-- Via API: `GET http://localhost:3001/api/export`
+Contributions are welcome! Whether it's a bug fix, new feature, or documentation improvement:
 
-## No cloud required
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-Kernvault runs entirely on your machine. No account, no sync, no telemetry.
+---
+
+## 📜 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+---
+
+<p align="center">
+  Built with 🧠 by Mike
+</p>
+
