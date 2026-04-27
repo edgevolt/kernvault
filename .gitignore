@@ -4,4 +4,8 @@ client/node_modules/
 server/node_modules/
 client/dist/
 *.db
+*.db-wal
+*.db-shm
+*.sqlite
 .env
+.DS_Store
