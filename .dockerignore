@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Dev build artifacts (the Dockerfile builds fresh inside Docker)
+client/dist/
+
+# Database — data lives in a volume, not in the image
+data/
+*.db
+
+# Git
+.git/
+.gitignore
+
+# Docs / meta
+README.md
+*.md
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Editor config
+.vscode/
+.idea/
+*.swp

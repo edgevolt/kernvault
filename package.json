@@ -1,0 +1,18 @@
+{
+  "name": "kernvault",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
+    "build:client": "npm run build --prefix client",
+    "build": "npm run build:client",
+    "docker:build": "docker build -t kernvault .",
+    "docker:run": "docker run -p 3001:3001 -v \"$(pwd)/data:/app/data\" kernvault"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
