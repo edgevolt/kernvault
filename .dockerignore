@@ -3,20 +3,26 @@ node_modules/
 client/node_modules/
 server/node_modules/
 
-# Dev build artifacts (the Dockerfile builds fresh inside Docker)
+# Build artifacts
 client/dist/
 
-# Database — data lives in a volume, not in the image
+# Database & Sensitive Data
 data/
 *.db
+*.db-wal
+*.db-shm
+*.sqlite
+.env
 
-# Git
+# Git & Docker
 .git/
 .gitignore
+.dockerignore
+Dockerfile
 
-# Docs / meta
-README.md
-*.md
+# Logs
+*.log
+npm-debug.log*
 
 # OS noise
 .DS_Store
@@ -26,3 +32,4 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+*.swo
