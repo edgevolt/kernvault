@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-LABEL org.opencontainers.image.source="https://github.com/edgevolt/kernvault"
+
 
 # ─── Stage 1: Build the React client ─────────────────────────────────────────
 FROM node:18-alpine AS client-builder
@@ -17,6 +17,7 @@ RUN npm run build
 
 # ─── Stage 2: Production image ────────────────────────────────────────────────
 FROM node:18-alpine AS production
+LABEL org.opencontainers.image.source="https://github.com/edgevolt/kernvault"
 
 # Install native build tools needed by better-sqlite3
 RUN apk add --no-cache python3 make g++
