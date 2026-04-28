@@ -1,4 +1,5 @@
 # syntax=docker/dockerfile:1
+LABEL org.opencontainers.image.source="https://github.com/edgevolt/kernvault"
 
 # ─── Stage 1: Build the React client ─────────────────────────────────────────
 FROM node:18-alpine AS client-builder
