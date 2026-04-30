@@ -8,6 +8,7 @@ import AddItemModal from '../components/AddItemModal';
 import ProgressBar from '../components/ProgressBar';
 import SpaceSettingsModal from '../components/SpaceSettingsModal';
 import LearningMap from '../components/LearningMap';
+import SynthesisCanvas from '../components/SynthesisCanvas';
 import ReflectionTrail from '../components/ReflectionTrail';
 import JourneyTimeline from '../components/JourneyTimeline';
 import Tour from '../components/Tour';
@@ -163,6 +164,10 @@ export default function SpaceView() {
   const [deletingSpace, setDeletingSpace] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [activeTab, setActiveTab] = useState('list');
+  const [mapMode, setMapMode] = useState(() => {
+    // Will be updated once we have the spaceId from params
+    return 'overview';
+  });
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [recallCount, setRecallCount] = useState(0);
   const moreMenuRef = useRef(null);
@@ -200,6 +205,10 @@ export default function SpaceView() {
         setRecallCount(data.filter(i => i.space_id === id).length);
       })
       .catch(console.error);
+
+    // Restore persisted map sub-mode for this space
+    const savedMode = localStorage.getItem(`map_mode_${id}`);
+    if (savedMode === 'synthesis' || savedMode === 'overview') setMapMode(savedMode);
   }, [id]);
 
   function handleStatusChange(itemId, status, stageId) {
@@ -691,7 +700,24 @@ export default function SpaceView() {
 
           {activeTab === 'map' && (
             <div className="animate-fade-in">
-              <LearningMap spaceId={space.id} />
+              {/* Map mode toggle */}
+              <div className="map-mode-toggle mb-4">
+                <button
+                  className={mapMode === 'overview' ? 'active' : ''}
+                  onClick={() => { setMapMode('overview'); localStorage.setItem(`map_mode_${id}`, 'overview'); }}
+                >
+                  Overview
+                </button>
+                <button
+                  className={mapMode === 'synthesis' ? 'active' : ''}
+                  onClick={() => { setMapMode('synthesis'); localStorage.setItem(`map_mode_${id}`, 'synthesis'); }}
+                >
+                  Synthesis
+                </button>
+              </div>
+
+              {mapMode === 'overview' && <LearningMap spaceId={space.id} />}
+              {mapMode === 'synthesis' && <SynthesisCanvas spaceId={space.id} space={space} />}
             </div>
           )}
 

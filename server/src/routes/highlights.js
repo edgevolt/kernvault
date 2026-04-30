@@ -40,7 +40,7 @@ router.patch('/:id', (req, res) => {
     return res.status(404).json({ error: 'Highlight not found' });
   }
 
-  let sql = 'UPDATE highlights SET updated_at = datetime("now")';
+  let sql = "UPDATE highlights SET updated_at = datetime('now')";
   const params = [];
 
   if (annotation !== undefined) {

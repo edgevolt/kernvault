@@ -15,6 +15,7 @@ const learningMapRouter = require('./routes/learningMap');
 const searchRouter      = require('./routes/search');
 const exportRouter      = require('./routes/export');
 const highlightsRouter  = require('./routes/highlights');
+const synthesisRouter   = require('./routes/synthesis');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,7 +23,8 @@ const PORT = process.env.PORT || 3001;
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors({
   origin: [
-    'http://localhost:5173',   // Vite dev server
+    'http://localhost:5173',   // Vite dev server (primary)
+    'http://localhost:5174',   // Vite dev server (fallback when 5173 is busy)
     'http://localhost:4173',   // Vite preview
     'http://localhost:3000',   // prod build served by Express
   ],
@@ -38,6 +40,7 @@ app.use('/api', exportRouter);         // /api/spaces/:id/export/annotations
 app.use('/api', searchRouter);         // /api/search?q=
 app.use('/api', settingsRouter);       // /api/export and /api/data — MUST be before items
 app.use('/api', learningMapRouter);    // /api/spaces/:id/map, /api/item-connections/:id, /api/templates
+app.use('/api', synthesisRouter);      // /api/spaces/:id/synthesis, /api/synthesis/nodes, /api/synthesis/connections
 app.use('/api', itemsRouter);          // /api/stages/:id/items and /api/items/:id
 app.use('/api', notesRouter);          // /api/items/:id/notes and /api/notes/:id
 app.use('/api', pausePointsRouter);    // /api/items/:id/pause-points and /api/pause-points/:id

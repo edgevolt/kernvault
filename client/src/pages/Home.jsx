@@ -53,13 +53,22 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Redirect to /welcome on first launch (spec v1.6: dedicated route, no skip)
-    const done = localStorage.getItem('onboarding_complete');
-    if (!done) { navigate('/welcome', { replace: true }); return; }
-
     setLoading(true);
     api.getSpaces()
-      .then(data => setSpaces(data))
+      .then(data => {
+        const done = localStorage.getItem('onboarding_complete');
+        if (!done) {
+          if (data.length === 0) {
+            // Truly first launch — go through onboarding
+            navigate('/welcome', { replace: true });
+            return;
+          }
+          // Spaces exist but flag was cleared (e.g. dev server port changed)
+          // — mark onboarding done and proceed normally
+          localStorage.setItem('onboarding_complete', 'true');
+        }
+        setSpaces(data);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
 

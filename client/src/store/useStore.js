@@ -144,5 +144,68 @@ export const useStore = create((set, get) => {
         [itemId]: (s.highlights[itemId] || []).filter(h => h.id !== id)
       }
     })),
+
+    // ── Synthesis ──────────────────────────────────────────────────────────
+    synthesisNodes: {},       // { [spaceId]: SynthesisNode[] }
+    synthesisConnections: {}, // { [spaceId]: SynthesisConnection[] }
+    synthesisFetched: {},     // { [spaceId]: boolean }
+
+    setSynthesisData: (spaceId, nodes, connections) => set((s) => ({
+      synthesisNodes: { ...s.synthesisNodes, [spaceId]: nodes },
+      synthesisConnections: { ...s.synthesisConnections, [spaceId]: connections },
+      synthesisFetched: { ...s.synthesisFetched, [spaceId]: true },
+    })),
+
+    addSynthesisNode: (spaceId, node) => set((s) => ({
+      synthesisNodes: {
+        ...s.synthesisNodes,
+        [spaceId]: [...(s.synthesisNodes[spaceId] || []), node],
+      }
+    })),
+
+    updateSynthesisNode: (spaceId, nodeId, changes) => set((s) => ({
+      synthesisNodes: {
+        ...s.synthesisNodes,
+        [spaceId]: (s.synthesisNodes[spaceId] || []).map(n =>
+          n.id === nodeId ? { ...n, ...changes } : n
+        ),
+      }
+    })),
+
+    removeSynthesisNode: (spaceId, nodeId) => set((s) => ({
+      synthesisNodes: {
+        ...s.synthesisNodes,
+        [spaceId]: (s.synthesisNodes[spaceId] || []).filter(n => n.id !== nodeId),
+      },
+      synthesisConnections: {
+        ...s.synthesisConnections,
+        [spaceId]: (s.synthesisConnections[spaceId] || []).filter(
+          c => c.source_node_id !== nodeId && c.target_node_id !== nodeId
+        ),
+      },
+    })),
+
+    addSynthesisConnection: (spaceId, connection) => set((s) => ({
+      synthesisConnections: {
+        ...s.synthesisConnections,
+        [spaceId]: [...(s.synthesisConnections[spaceId] || []), connection],
+      }
+    })),
+
+    updateSynthesisConnection: (spaceId, connectionId, changes) => set((s) => ({
+      synthesisConnections: {
+        ...s.synthesisConnections,
+        [spaceId]: (s.synthesisConnections[spaceId] || []).map(c =>
+          c.id === connectionId ? { ...c, ...changes } : c
+        ),
+      }
+    })),
+
+    removeSynthesisConnection: (spaceId, connectionId) => set((s) => ({
+      synthesisConnections: {
+        ...s.synthesisConnections,
+        [spaceId]: (s.synthesisConnections[spaceId] || []).filter(c => c.id !== connectionId),
+      }
+    })),
   };
 });

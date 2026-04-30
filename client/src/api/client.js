@@ -89,4 +89,13 @@ export const api = {
   getDigest:     () => request('GET', '/digest'),
   exportData:    () => fetch(`${BASE}/export`).then(r => r.blob()),
   deleteAllData: () => request('DELETE', '/data', { confirm: 'DELETE_ALL' }),
+
+  // Synthesis
+  getSynthesisData:          (spaceId) => request('GET',    `/spaces/${spaceId}/synthesis`),
+  createSynthesisNode:       (body)    => request('POST',   '/synthesis/nodes', body),
+  updateSynthesisNode:       (id, b)   => request('PATCH',  `/synthesis/nodes/${id}`, b),
+  deleteSynthesisNode:       (id)      => request('DELETE', `/synthesis/nodes/${id}`),
+  createSynthesisConnection: (body)    => request('POST',   '/synthesis/connections', body),
+  updateSynthesisConnection: (id, b)   => request('PATCH',  `/synthesis/connections/${id}`, b),
+  deleteSynthesisConnection: (id)      => request('DELETE', `/synthesis/connections/${id}`),
 };

@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { db, touchSpace, getSpaceIdForStage, getSpaceIdForItem } = require('../db');
 const { fetchAndParse } = require('../lib/fetcher');
+const { fetchYouTubeTranscript } = require('../lib/youtubeTranscript');
 
 const router = express.Router();
 
@@ -48,9 +49,7 @@ router.post('/stages/:stageId/items', upload.single('pdf'), async (req, res) => 
   // YouTube mode
   else if (source_url && (source_url.includes('youtube.com') || source_url.includes('youtu.be'))) {
     try {
-      const ytModule = await import('youtube-transcript');
-      const YoutubeTranscript = ytModule.YoutubeTranscript;
-      const transcript = await YoutubeTranscript.fetchTranscript(source_url);
+      const transcript = await fetchYouTubeTranscript(source_url);
       
       title = titleOverride?.trim() || 'YouTube Video';
       finalContentType = 'youtube';

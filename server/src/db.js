@@ -129,6 +129,32 @@ db.exec(`
     created_at        TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS synthesis_nodes (
+    id          TEXT PRIMARY KEY,
+    space_id    TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    type        TEXT NOT NULL CHECK(type IN ('item','highlight','pause_point','freetext')),
+    source_id   TEXT,
+    content     TEXT NOT NULL DEFAULT '',
+    x           REAL NOT NULL DEFAULT 0,
+    y           REAL NOT NULL DEFAULT 0,
+    width       REAL NOT NULL DEFAULT 220,
+    height      REAL NOT NULL DEFAULT 120,
+    color       TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS synthesis_connections (
+    id              TEXT PRIMARY KEY,
+    space_id        TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    source_node_id  TEXT NOT NULL REFERENCES synthesis_nodes(id) ON DELETE CASCADE,
+    target_node_id  TEXT NOT NULL REFERENCES synthesis_nodes(id) ON DELETE CASCADE,
+    label           TEXT,
+    has_arrow       INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 // ─── Safe incremental ALTER TABLE migrations (idempotent) ─────────────────────
@@ -156,6 +182,34 @@ safeAlter("ALTER TABLE recall_sessions ADD COLUMN triggered_by TEXT");
 // V1.7 Migrations
 safeAlter("DROP TABLE IF EXISTS concept_connections");
 safeAlter("DROP TABLE IF EXISTS concept_nodes");
+
+// V2.0 Migrations — Synthesis Mode
+safeAlter(`CREATE TABLE IF NOT EXISTS synthesis_nodes (
+  id          TEXT PRIMARY KEY,
+  space_id    TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+  type        TEXT NOT NULL CHECK(type IN ('item','highlight','pause_point','freetext')),
+  source_id   TEXT,
+  content     TEXT NOT NULL DEFAULT '',
+  x           REAL NOT NULL DEFAULT 0,
+  y           REAL NOT NULL DEFAULT 0,
+  width       REAL NOT NULL DEFAULT 220,
+  height      REAL NOT NULL DEFAULT 120,
+  color       TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+)`);
+safeAlter(`CREATE TABLE IF NOT EXISTS synthesis_connections (
+  id              TEXT PRIMARY KEY,
+  space_id        TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+  source_node_id  TEXT NOT NULL REFERENCES synthesis_nodes(id) ON DELETE CASCADE,
+  target_node_id  TEXT NOT NULL REFERENCES synthesis_nodes(id) ON DELETE CASCADE,
+  label           TEXT,
+  has_arrow       INTEGER NOT NULL DEFAULT 0,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+)`);
+safeAlter("ALTER TABLE synthesis_connections ADD COLUMN source_handle TEXT");
+safeAlter("ALTER TABLE synthesis_connections ADD COLUMN target_handle TEXT");
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 

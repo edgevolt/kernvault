@@ -17,7 +17,8 @@ export default function NotesPanel({ itemId, onClose }) {
   const setNotes      = useStore(s => s.setNotes);
   const addNote       = useStore(s => s.addNote);
   const removeNote    = useStore(s => s.removeNote);
-  const highlights    = useStore(s => s.highlights[itemId] || []);
+  const highlightsMap = useStore(s => s.highlights);
+  const highlights    = highlightsMap[itemId] || [];
   const removeHighlight = useStore(s => s.removeHighlight);
 
   const [body, setBody]       = useState('');

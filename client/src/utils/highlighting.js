@@ -25,41 +25,51 @@ export function getTextNodes(container) {
   return textNodes;
 }
 
-// Map a DOM selection to a global start and end offset within the container's total text.
 export function getSelectionOffsets(container, selection) {
   if (!selection.rangeCount) return null;
   const range = selection.getRangeAt(0);
   
   const textNodes = getTextNodes(container);
   
-  let start_offset = 0;
-  let end_offset = 0;
+  let start_offset = -1;
+  let end_offset = -1;
   let currentOffset = 0;
-  let foundStart = false;
-  let foundEnd = false;
 
   for (const node of textNodes) {
-    if (!foundStart && node === range.startContainer) {
-      start_offset = currentOffset + range.startOffset;
-      foundStart = true;
-    }
+    const nodeRange = document.createRange();
+    nodeRange.selectNodeContents(node);
     
-    if (!foundEnd && node === range.endContainer) {
-      end_offset = currentOffset + range.endOffset;
-      foundEnd = true;
+    // Check if node intersects the selection range
+    // A node intersects if its end is after the range start, AND its start is before the range end.
+    const intersects = 
+      range.compareBoundaryPoints(Range.START_TO_END, nodeRange) >= 0 && 
+      range.compareBoundaryPoints(Range.END_TO_START, nodeRange) <= 0;
+
+    if (intersects) {
+      if (start_offset === -1) {
+        // First intersecting node. If the selection start is exactly in this node, use its offset.
+        if (range.startContainer === node) {
+          start_offset = currentOffset + range.startOffset;
+        } else {
+          // Selection started before this node (e.g. in a parent element), so this node is covered from index 0
+          start_offset = currentOffset;
+        }
+      }
+      
+      // Update end_offset for every intersecting node. The last one wins.
+      if (range.endContainer === node) {
+        end_offset = currentOffset + range.endOffset;
+      } else {
+        // Selection ends after this node, so this node is fully covered
+        end_offset = currentOffset + node.textContent.length;
+      }
     }
     
     currentOffset += node.textContent.length;
-    
-    if (foundStart && foundEnd) break;
   }
   
-  // Handle backwards selection (user dragged right to left)
-  if (start_offset > end_offset) {
-    const temp = start_offset;
-    start_offset = end_offset;
-    end_offset = temp;
-  }
+  if (start_offset === -1 || end_offset === -1) return null;
+  if (start_offset >= end_offset) return null;
   
   return { start_offset, end_offset };
 }

@@ -9,6 +9,115 @@ import CompletionGate from '../components/CompletionGate';
 import NotesPanel from '../components/NotesPanel';
 import Tour from '../components/Tour';
 
+/* eslint-disable react/prop-types */
+function InlineAnnotationPopover({ inlineAnnotation, highlights, onClose, onSave }) {
+  const [text, setText] = useState(highlights.find(h => h.id === inlineAnnotation.highlightId)?.annotation || '');
+  const [error, setError] = useState('');
+
+  const handleSave = () => {
+    if (!text.trim()) {
+      setError('An annotation is required — what does this passage mean to you?');
+      return;
+    }
+    setError('');
+    onSave(inlineAnnotation.highlightId, text);
+  };
+
+  return (
+    <div 
+      className="highlight-toolbar fixed z-50 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-lg p-3 w-80 animate-fade-in"
+      style={{
+        top: Math.min(inlineAnnotation.rect.bottom + 8, window.innerHeight - 180),
+        left: Math.max(16, Math.min(
+          inlineAnnotation.rect.left + (inlineAnnotation.rect.width / 2) - 160,
+          window.innerWidth - 336
+        ))
+      }}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Why does this matter?</p>
+      <textarea
+        autoFocus
+        className={`w-full bg-zinc-50 dark:bg-zinc-950 border rounded text-sm resize-none p-2 focus:outline-none focus:ring-2 placeholder-zinc-400 dark:placeholder-zinc-600 ${
+          error
+            ? 'border-red-400 dark:border-red-500 focus:ring-red-400/40'
+            : 'border-zinc-200 dark:border-zinc-800 focus:ring-yellow-400/50'
+        }`}
+        rows="3"
+        placeholder="Add your annotation…"
+        value={text}
+        onChange={(e) => { setText(e.target.value); if (error) setError(''); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            handleSave();
+          } else if (e.key === 'Escape') {
+            onClose();
+          }
+        }}
+      />
+      {error && (
+        <p className="text-[11px] text-red-500 dark:text-red-400 mt-1.5">{error}</p>
+      )}
+      <div className="flex justify-between items-center mt-2">
+        <span className="text-[10px] text-zinc-400">⌘↵ to save · Esc to close</span>
+        <div className="flex gap-2">
+          <button className="btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+          <button
+            className="btn-primary btn-sm"
+            onClick={handleSave}
+          >Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileAnnotationSheet({ mobileAnnotation, highlights, onClose, onSave, onDelete }) {
+  const [text, setText] = useState(highlights.find(h => h.id === mobileAnnotation.highlightId)?.annotation || '');
+  const [error, setError] = useState('');
+
+  const handleSave = () => {
+    if (!text.trim()) {
+      setError('An annotation is required — what does this passage mean to you?');
+      return;
+    }
+    setError('');
+    onSave(mobileAnnotation.highlightId, text);
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 z-50 animate-fade-in" onClick={onClose} />
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 z-50 rounded-t-xl shadow-2xl transition-transform duration-300 p-4 mobile-annotation-sheet transform translate-y-0">
+        <div className="w-12 h-1.5 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto mb-4" />
+        <h3 className="text-sm font-medium mb-3">Annotation</h3>
+        <textarea
+          autoFocus
+          className={`w-full bg-zinc-50 dark:bg-zinc-950 border rounded-lg p-3 text-base resize-none focus:outline-none focus:ring-2 ${
+            error
+              ? 'border-red-400 dark:border-red-500 focus:ring-red-400/40'
+              : 'border-zinc-200 dark:border-zinc-800 focus:ring-blue-500/50'
+          }`}
+          rows="4"
+          placeholder="Why does this passage matter?"
+          value={text}
+          onChange={(e) => { setText(e.target.value); if (error) setError(''); }}
+        />
+        {error && (
+          <p className="text-[12px] text-red-500 dark:text-red-400 mt-1.5">{error}</p>
+        )}
+        <div className="flex justify-between items-center mt-4">
+          <button className="text-red-500 font-medium text-sm px-4 py-2" onClick={onDelete}>Delete</button>
+          <div className="flex gap-2">
+            <button className="btn-ghost" onClick={onClose}>Cancel</button>
+            <button className="btn-primary" onClick={handleSave}>Save</button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 const FONT_SIZES = { sm: 'reading-sm', md: 'reading-md', lg: 'reading-lg' };
 
 const TYPE_LABELS = {
@@ -72,7 +181,8 @@ export default function ReaderView() {
   const fontSize         = useStore(s => s.settings.fontSize);
   const fontFamily       = useStore(s => s.settings.fontFamily || 'sans');
   const updateSettings   = useStore(s => s.updateSettings);
-  const highlights       = useStore(s => s.highlights[itemId] || []);
+  const highlightsMap    = useStore(s => s.highlights);
+  const highlights       = useMemo(() => highlightsMap[itemId] || [], [highlightsMap, itemId]);
   const setHighlights    = useStore(s => s.setHighlights);
   const addHighlight     = useStore(s => s.addHighlight);
   const updateHighlight  = useStore(s => s.updateHighlight);
@@ -208,16 +318,16 @@ export default function ReaderView() {
     return () => clearTimeout(tid);
   }, [item, segments, highlights, fontSize, isMobile, mobileSentences, itemId, removeHighlight]);
 
-  // Desktop selection handling
+  // Native selection handling (Mouse/Trackpad)
   useEffect(() => {
-    if (isMobile || !articleRef.current) return;
-    
     const handleSelectionChange = () => {
+      if (!articleRef.current) return;
+      
       const sel = window.getSelection();
-      if (!sel.isCollapsed && articleRef.current.contains(sel.anchorNode)) {
+      if (!sel.isCollapsed && sel.rangeCount > 0) {
         const range = sel.getRangeAt(0);
         const rect = range.getBoundingClientRect();
-        
+      
         const offsets = getSelectionOffsets(articleRef.current, sel);
         if (offsets && offsets.start_offset !== offsets.end_offset) {
           setSelection({
@@ -234,13 +344,15 @@ export default function ReaderView() {
 
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, [isMobile]);
+  }, []);
 
   // Mobile tap handling
   useEffect(() => {
-    if (!isMobile || !articleRef.current) return;
+    if (!isMobile) return;
     
     const handleClick = (e) => {
+      if (!articleRef.current) return;
+      
       const span = e.target.closest('span[data-sentence-index]');
       if (span) {
         const idx = parseInt(span.getAttribute('data-sentence-index'), 10);
@@ -296,7 +408,7 @@ export default function ReaderView() {
         setTimeout(() => {
           const mark = document.querySelector(`mark[data-highlight-id="${hl.id}"]`);
           const rect = mark ? mark.getBoundingClientRect() : { bottom: 200, left: 200, width: 100 };
-          setInlineAnnotation({ highlightId: hl.id, rect });
+          setInlineAnnotation({ highlightId: hl.id, rect, isNew: true });
         }, 150);
       } else {
         setMobileSelection(null);
@@ -313,14 +425,38 @@ export default function ReaderView() {
 
   const handleSaveAnnotation = async (hlId, text) => {
     try {
-      const state = text.trim() ? 'annotated' : 'unannotated';
-      const updated = await api.updateHighlight(hlId, { annotation: text, annotation_state: state });
+      if (!text.trim()) {
+        // Disregard (delete) the highlight entirely if saved with empty text
+        await api.deleteHighlight(hlId);
+        removeHighlight(itemId, hlId);
+        setInlineAnnotation(null);
+        setMobileAnnotation(null);
+        return;
+      }
+
+      const updated = await api.updateHighlight(hlId, { annotation: text, annotation_state: 'annotated' });
       updateHighlight(itemId, updated);
       setInlineAnnotation(null);
       setMobileAnnotation(null);
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleCloseInline = () => {
+    if (inlineAnnotation?.isNew) {
+      api.deleteHighlight(inlineAnnotation.highlightId).catch(console.error);
+      removeHighlight(itemId, inlineAnnotation.highlightId);
+    }
+    setInlineAnnotation(null);
+  };
+
+  const handleCloseMobile = () => {
+    if (mobileAnnotation?.isNew) {
+      api.deleteHighlight(mobileAnnotation.highlightId).catch(console.error);
+      removeHighlight(itemId, mobileAnnotation.highlightId);
+    }
+    setMobileAnnotation(null);
   };
 
   // Find current stage for breadcrumb
@@ -577,7 +713,7 @@ export default function ReaderView() {
       </main>
 
       {/* Desktop Highlight Toolbar */}
-      {!isMobile && selection && (
+      {selection && (
         <div 
           className="highlight-toolbar fixed z-50 transform -translate-x-1/2 -translate-y-full pb-2 animate-fade-in"
           style={{ top: selection.rect.top, left: selection.rect.left + selection.rect.width / 2 }}
@@ -629,79 +765,31 @@ export default function ReaderView() {
       )}
 
       {/* Desktop Inline Annotation Popover */}
-      {!isMobile && inlineAnnotation && (
-        <div 
-          className="highlight-toolbar fixed z-50 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-lg p-3 w-80 animate-fade-in"
-          style={{
-            top: Math.min(inlineAnnotation.rect.bottom + 8, window.innerHeight - 180),
-            left: Math.max(16, Math.min(
-              inlineAnnotation.rect.left + (inlineAnnotation.rect.width / 2) - 160,
-              window.innerWidth - 336
-            ))
-          }}
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Why does this matter?</p>
-          <textarea
-            autoFocus
-            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded text-sm resize-none p-2 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 placeholder-zinc-400 dark:placeholder-zinc-600"
-            rows="3"
-            placeholder="Add your annotation…"
-            defaultValue={highlights.find(h => h.id === inlineAnnotation.highlightId)?.annotation || ''}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                handleSaveAnnotation(inlineAnnotation.highlightId, e.target.value);
-              } else if (e.key === 'Escape') {
-                setInlineAnnotation(null);
-              }
-            }}
-            id="inline-annotation-input"
-          />
-          <div className="flex justify-between items-center mt-2">
-            <span className="text-[10px] text-zinc-400">⌘↵ to save · Esc to close</span>
-            <div className="flex gap-2">
-              <button className="btn-ghost btn-sm" onClick={() => setInlineAnnotation(null)}>Cancel</button>
-              <button
-                className="btn-primary btn-sm"
-                onClick={() => handleSaveAnnotation(inlineAnnotation.highlightId, document.getElementById('inline-annotation-input').value)}
-              >Save</button>
-            </div>
-          </div>
-        </div>
+      {inlineAnnotation && (
+        <InlineAnnotationPopover 
+          inlineAnnotation={inlineAnnotation}
+          highlights={highlights}
+          onClose={handleCloseInline}
+          onSave={handleSaveAnnotation}
+        />
       )}
 
       {/* Mobile Annotation Bottom Sheet */}
       {isMobile && mobileAnnotation && (
-        <>
-          <div className="fixed inset-0 bg-black/40 z-50 animate-fade-in" onClick={() => setMobileAnnotation(null)} />
-          <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 z-50 rounded-t-xl shadow-2xl transition-transform duration-300 p-4 mobile-annotation-sheet transform translate-y-0">
-            <div className="w-12 h-1.5 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto mb-4" />
-            <h3 className="text-sm font-medium mb-3">Annotation</h3>
-            <textarea
-              autoFocus
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 text-base resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              rows="4"
-              placeholder="Why does this passage matter?"
-              defaultValue={highlights.find(h => h.id === mobileAnnotation.highlightId)?.annotation || ''}
-              id="mobile-annotation-input"
-            />
-            <div className="flex justify-between items-center mt-4">
-              <button className="text-red-500 font-medium text-sm px-4 py-2" onClick={() => {
-                if (confirm('Delete highlight?')) {
-                  api.deleteHighlight(mobileAnnotation.highlightId).then(() => {
-                    removeHighlight(itemId, mobileAnnotation.highlightId);
-                    setMobileAnnotation(null);
-                  });
-                }
-              }}>Delete</button>
-              <div className="flex gap-2">
-                <button className="btn-ghost" onClick={() => setMobileAnnotation(null)}>Cancel</button>
-                <button className="btn-primary" onClick={() => handleSaveAnnotation(mobileAnnotation.highlightId, document.getElementById('mobile-annotation-input').value)}>Save</button>
-              </div>
-            </div>
-          </div>
-        </>
+        <MobileAnnotationSheet
+          mobileAnnotation={mobileAnnotation}
+          highlights={highlights}
+          onClose={handleCloseMobile}
+          onSave={handleSaveAnnotation}
+          onDelete={() => {
+            if (confirm('Delete highlight?')) {
+              api.deleteHighlight(mobileAnnotation.highlightId).then(() => {
+                removeHighlight(itemId, mobileAnnotation.highlightId);
+                setMobileAnnotation(null);
+              });
+            }
+          }}
+        />
       )}
 
       {/* Notes panel */}
