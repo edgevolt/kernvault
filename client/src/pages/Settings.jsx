@@ -175,76 +175,7 @@ export default function Settings() {
             </SettingRow>
           </Section>
 
-          {/* Features */}
-          <Section title="Features">
-            <SettingRow
-              label="Voice transcription"
-              description="Enables microphone button in Notes panel (uses browser's speech API, no data sent externally)"
-            >
-              <Toggle
-                id="settings-voice-toggle"
-                checked={settings.voiceEnabled}
-                onChange={v => updateSettings({ voiceEnabled: v })}
-              />
-            </SettingRow>
-          </Section>
 
-          {/* Optional AI */}
-          <Section title="Optional AI">
-            <SettingRow
-              label="AI-assisted prompts"
-              description="When enabled, pause-point prompts are generated based on article content. Your API key is stored locally only."
-            >
-              <Toggle
-                id="settings-ai-toggle"
-                checked={settings.aiEnabled}
-                onChange={v => updateSettings({ aiEnabled: v })}
-              />
-            </SettingRow>
-
-            {settings.aiEnabled && (
-              <>
-                <SettingRow label="Provider">
-                  <RadioGroup
-                    value={settings.aiProvider}
-                    onChange={v => updateSettings({ aiProvider: v })}
-                    options={[
-                      { value: 'openai',    label: 'OpenAI'    },
-                      { value: 'anthropic', label: 'Anthropic' },
-                      { value: 'ollama',    label: 'Ollama'    },
-                    ]}
-                  />
-                </SettingRow>
-
-                {settings.aiProvider !== 'ollama' ? (
-                  <div className="px-4 py-3">
-                    <label className="label" htmlFor="settings-ai-key">API Key</label>
-                    <input
-                      id="settings-ai-key"
-                      type="password"
-                      className="input"
-                      placeholder="sk-..."
-                      value={settings.aiApiKey}
-                      onChange={e => updateSettings({ aiApiKey: e.target.value })}
-                    />
-                    <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-1.5">Stored in browser localStorage only.</p>
-                  </div>
-                ) : (
-                  <div className="px-4 py-3">
-                    <label className="label" htmlFor="settings-ollama-url">Ollama URL</label>
-                    <input
-                      id="settings-ollama-url"
-                      type="url"
-                      className="input"
-                      placeholder="http://localhost:11434"
-                      value={settings.aiOllamaUrl}
-                      onChange={e => updateSettings({ aiOllamaUrl: e.target.value })}
-                    />
-                  </div>
-                )}
-              </>
-            )}
-          </Section>
 
           {/* Tutorials */}
           <Section title="Tutorials">
@@ -323,7 +254,7 @@ export default function Settings() {
           </Section>
 
           <p className="text-xs text-center text-zinc-400 dark:text-zinc-600 mt-4">
-            Kernvault v1.0 — local-first, no cloud required
+            Kernvault v2.0 — local-first, no cloud required
           </p>
         </div>
       </main>

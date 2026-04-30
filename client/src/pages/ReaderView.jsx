@@ -119,6 +119,7 @@ function MobileAnnotationSheet({ mobileAnnotation, highlights, onClose, onSave, 
 }
 
 const FONT_SIZES = { sm: 'reading-sm', md: 'reading-md', lg: 'reading-lg' };
+const FONT_FAMILIES = { sans: 'font-sans', serif: 'font-serif', mono: 'font-mono' };
 
 const TYPE_LABELS = {
   article: 'Article', video: 'Video', book: 'Book',
@@ -635,7 +636,7 @@ export default function ReaderView() {
       </header>
 
       {/* Content area */}
-      <main className={`pt-14 pb-24 font-${fontFamily} ${FONT_SIZES[fontSize] || 'reading-md'}`} onClick={() => setShowDisplayMenu(false)}>
+      <main className={`pt-14 pb-24 ${FONT_FAMILIES[fontFamily] || 'font-sans'} ${FONT_SIZES[fontSize] || 'reading-md'}`} onClick={() => setShowDisplayMenu(false)}>
         <div className="reading-column py-8">
           {/* Meta */}
           <div className="mb-6">
