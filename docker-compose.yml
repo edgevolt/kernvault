@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  kernvault:
+    image: ghcr.io/edgevolt/kernvault:latest
+    container_name: kernvault
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - kernvault_data:/app/data
+    environment:
+      - PORT=3001
+
+volumes:
+  kernvault_data:
+    name: kernvault_data

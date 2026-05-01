@@ -305,19 +305,28 @@ kernvault/
 
 ## Getting Started
 
-### Option 1: Docker
+### Option 1: Docker Compose (Recommended)
 
-The recommended way to run Kernvault without managing a Node.js environment.
+The easiest way to deploy Kernvault is using the pre-built image from the GitHub Container Registry. A `docker-compose.yml` file is provided in the root of the project.
+
+```bash
+# Start the container in the background
+docker compose up -d
+```
+
+The application will be available at `http://localhost:3001`. A Docker volume named `kernvault_data` is automatically created to persist your SQLite database across container restarts.
+
+#### Building Docker Locally (Alternative)
+
+If you prefer to build the image yourself from source instead of pulling from GHCR:
 
 ```bash
 # Build the image
 npm run docker:build
 
-# Run with persistent data volume
+# Run with persistent data volume mapped to ./data
 npm run docker:run
 ```
-
-The application will be available at `http://localhost:3001`. The `./data` directory is mounted as a volume so your database persists across container restarts.
 
 ### Option 2: Local Development
 
