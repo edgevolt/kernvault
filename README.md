@@ -119,8 +119,8 @@ Kernvault is a monorepo containing a React frontend and a Node.js/Express backen
 ```
 Browser
   |
-  | HTTP (dev: localhost:5173 proxied to localhost:3001)
-  | HTTP (prod: localhost:3001 for both API and static assets)
+  | HTTP (dev: localhost:5173 proxied to localhost:9876)
+  | HTTP (prod: localhost:9876 for both API and static assets)
   |
 Express Server (Node.js)
   |
@@ -165,7 +165,7 @@ Content ingestion for YouTube uses a direct call to the YouTube InnerTube player
 
 ### Docker
 
-The Dockerfile uses a two-stage build. Stage 1 installs client dependencies and runs `vite build` to produce the static bundle. Stage 2 installs only production server dependencies (including native compilation of `better-sqlite3` via `python3`, `make`, and `g++`), copies the server source, and copies the built client bundle from Stage 1. The resulting image serves both the API and the frontend from port 3001. The `/app/data` directory should be mounted as a volume to persist the SQLite database across container restarts.
+The Dockerfile uses a two-stage build. Stage 1 installs client dependencies and runs `vite build` to produce the static bundle. Stage 2 installs only production server dependencies (including native compilation of `better-sqlite3` via `python3`, `make`, and `g++`), copies the server source, and copies the built client bundle from Stage 1. The resulting image serves both the API and the frontend from port 9876. The `/app/data` directory should be mounted as a volume to persist the SQLite database across container restarts.
 
 ---
 
@@ -314,7 +314,7 @@ The easiest way to deploy Kernvault is using the pre-built image from the GitHub
 docker compose up -d
 ```
 
-The application will be available at `http://localhost:3001`. A Docker volume named `kernvault_data` is automatically created to persist your SQLite database across container restarts.
+The application will be available at `http://localhost:9876`. A Docker volume named `kernvault_data` is automatically created to persist your SQLite database across container restarts.
 
 #### Building Docker Locally (Alternative)
 
@@ -339,7 +339,7 @@ npm start
 ```
 
 - Frontend (Vite): `http://localhost:5173`
-- Backend (Express): `http://localhost:3001`
+- Backend (Express): `http://localhost:9876`
 
 In development, the Vite dev server proxies API requests to the Express backend. The proxy configuration is in `client/vite.config.js`.
 
@@ -365,7 +365,7 @@ This outputs the static bundle to `client/dist/`, which the Express server will 
 
 ## Configuration
 
-Kernvault uses no environment configuration files by default. The only runtime variable is `PORT`, which defaults to `3001` if not set.
+Kernvault uses no environment configuration files by default. The only runtime variable is `PORT`, which defaults to `9876` if not set.
 
 ```bash
 PORT=8080 node server/src/index.js

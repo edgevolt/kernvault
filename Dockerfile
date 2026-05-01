@@ -38,11 +38,11 @@ COPY --from=client-builder /build/client/dist ./client/dist
 RUN mkdir -p /app/data
 
 # Expose the single port
-EXPOSE 3001
+EXPOSE 9876
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3001/api/spaces || exit 1
+  CMD wget -qO- http://localhost:9876/api/spaces || exit 1
 
 # Run the server (serves both API and static frontend)
 CMD ["node", "server/src/index.js"]

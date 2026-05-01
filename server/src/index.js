@@ -18,7 +18,7 @@ const highlightsRouter  = require('./routes/highlights');
 const synthesisRouter   = require('./routes/synthesis');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 9876;
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors({

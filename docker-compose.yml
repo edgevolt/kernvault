@@ -4,11 +4,11 @@ services:
     container_name: kernvault
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "9876:9876"
     volumes:
       - kernvault_data:/app/data
     environment:
-      - PORT=3001
+      - PORT=9876
 
 volumes:
   kernvault_data:
