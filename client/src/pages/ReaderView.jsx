@@ -349,7 +349,7 @@ export default function ReaderView() {
 
   // Mobile tap handling
   useEffect(() => {
-    if (!isMobile) return;
+    if (!isMobile || !articleRef.current) return;
     
     const handleClick = (e) => {
       if (!articleRef.current) return;
@@ -390,7 +390,7 @@ export default function ReaderView() {
     const node = articleRef.current;
     node.addEventListener('click', handleClick);
     return () => node.removeEventListener('click', handleClick);
-  }, [isMobile]);
+  }, [isMobile, item]);
 
   const handleCreateHighlight = async (start_offset, end_offset, text) => {
     try {
