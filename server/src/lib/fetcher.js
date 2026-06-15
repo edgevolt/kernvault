@@ -4,6 +4,23 @@ const { Readability } = require('@mozilla/readability');
 
 const DEFAULT_TIMEOUT_MS = 12000;
 
+// Block private/loopback ranges to prevent SSRF
+const PRIVATE_IP_RE =
+  /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|::1$|fc00:|fe80:)/i;
+
+function validateUrl(rawUrl) {
+  let parsed;
+  try { parsed = new URL(rawUrl); } catch {
+    throw { code: 'FETCH_FAILED', message: 'Invalid URL.' };
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw { code: 'FETCH_FAILED', message: 'Only HTTP and HTTPS URLs are supported.' };
+  }
+  if (PRIVATE_IP_RE.test(parsed.hostname)) {
+    throw { code: 'FETCH_FAILED', message: 'Requests to private or local addresses are not allowed.' };
+  }
+}
+
 const USER_AGENT =
   'Mozilla/5.0 (compatible; Kernvault/1.0; +https://github.com/kernvault)';
 
@@ -15,6 +32,8 @@ const USER_AGENT =
  * @throws {{ code: string, message: string }}
  */
 async function fetchAndParse(url) {
+  validateUrl(url);
+
   let html;
 
   try {

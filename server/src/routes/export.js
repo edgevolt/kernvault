@@ -1,5 +1,7 @@
 const express = require('express');
 const { db } = require('../db');
+const epub = require('epub-gen-memory').default;
+const { escHtml } = require('../lib/sanitize');
 
 const router = express.Router();
 
@@ -79,6 +81,93 @@ router.get('/spaces/:id/export/annotations', (req, res) => {
   res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="kernvault-${slug}-annotations.md"`);
   res.send(md);
+});
+
+router.get('/items/:id/export/epub', async (req, res) => {
+  const item = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
+  if (!item) return res.status(404).json({ error: 'Item not found' });
+
+  const mode = req.query.mode === 'clean' ? 'clean' : 'annotated';
+  const includeNotes       = req.query.includeNotes       !== 'false';
+  const includeHighlights  = req.query.includeHighlights  !== 'false';
+  const includePausePoints = req.query.includePausePoints !== 'false';
+
+  const pausePoints = db.prepare(
+    `SELECT * FROM pause_points WHERE item_id = ? ORDER BY "position" ASC`
+  ).all(item.id);
+
+  let notes      = [];
+  let highlights = [];
+
+  if (mode === 'annotated') {
+    if (includeNotes) {
+      notes = db.prepare('SELECT * FROM notes WHERE item_id = ? ORDER BY created_at ASC').all(item.id);
+    }
+    if (includeHighlights) {
+      highlights = db.prepare('SELECT * FROM highlights WHERE item_id = ? ORDER BY start_offset ASC').all(item.id);
+    }
+  }
+
+  const articleHtml = item.content_html
+    || (item.content_text
+        ? item.content_text.split('\n').filter(Boolean).map(p => `<p>${escHtml(p)}</p>`).join('')
+        : '<p>No content available.</p>');
+
+  let reflHtml = '';
+
+  const activePausePoints = pausePoints.filter(pp => !pp.skipped && pp.prompt);
+  if (activePausePoints.length > 0) {
+    reflHtml += '<h2>Pause Points</h2>';
+    for (const pp of activePausePoints) {
+      reflHtml += `<div style="margin-bottom:2em"><p><em>${escHtml(pp.prompt)}</em></p>`;
+      if (mode === 'annotated' && includePausePoints && pp.response?.trim()) {
+        reflHtml += `<blockquote>${escHtml(pp.response)}</blockquote>`;
+      } else {
+        reflHtml += '<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>';
+      }
+      reflHtml += '</div>';
+    }
+  }
+
+  reflHtml += '<h2>Final Reflection</h2>';
+  reflHtml += '<p><em>Write one sentence: the core idea of this piece in your own words.</em></p>';
+  if (mode === 'annotated' && item.reflection) {
+    reflHtml += `<blockquote>${escHtml(item.reflection)}</blockquote>`;
+  } else {
+    reflHtml += '<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>';
+  }
+
+  if (highlights.length > 0) {
+    reflHtml += '<h2>Highlights</h2>';
+    for (const h of highlights) {
+      reflHtml += `<blockquote>${escHtml(h.selected_text)}</blockquote>`;
+      if (h.annotation) reflHtml += `<p>${escHtml(h.annotation)}</p>`;
+    }
+  }
+
+  if (notes.length > 0) {
+    reflHtml += '<h2>Notes</h2><ul>';
+    for (const note of notes) reflHtml += `<li>${escHtml(note.body)}</li>`;
+    reflHtml += '</ul>';
+  }
+
+  const slug = item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+  try {
+    const buffer = await epub(
+      { title: item.title, author: 'Kernvault', description: item.source_url || '', ignoreFailedDownloads: true },
+      [
+        { title: item.title, content: articleHtml, url: item.source_url || undefined },
+        { title: 'Reflections', content: reflHtml },
+      ]
+    );
+    res.setHeader('Content-Type', 'application/epub+zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${slug}.epub"`);
+    res.send(buffer);
+  } catch (err) {
+    console.error('EPUB generation failed:', err);
+    res.status(500).json({ error: 'Failed to generate EPUB' });
+  }
 });
 
 module.exports = router;

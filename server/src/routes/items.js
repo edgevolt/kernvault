@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const { db, touchSpace, getSpaceIdForStage, getSpaceIdForItem } = require('../db');
 const { fetchAndParse } = require('../lib/fetcher');
 const { fetchYouTubeTranscript } = require('../lib/youtubeTranscript');
+const { sanitizeHtml, escHtml } = require('../lib/sanitize');
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.get('/stages/:stageId/items', (req, res) => {
 
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 // ─── POST /api/stages/:stageId/items ─────────────────────────────────────────
 router.post('/stages/:stageId/items', upload.single('pdf'), async (req, res) => {
@@ -37,9 +38,9 @@ router.post('/stages/:stageId/items', upload.single('pdf'), async (req, res) => 
       const data = await pdfParse(req.file.buffer);
       title = titleOverride?.trim() || req.file.originalname || 'Untitled PDF';
       finalText = data.text;
-      // Convert plain text to simple paragraphs for html rendering
-      finalHtml = finalText.split('\n\n').map(p => `<p>${p.trim()}</p>`).join('');
-      source_url = req.file.originalname; // save filename as attribution
+      finalHtml = finalText.split('\n\n').filter(Boolean).map(p => `<p>${escHtml(p.trim())}</p>`).join('');
+      const safeName = req.file.originalname.replace(/[^a-zA-Z0-9 ._()[\]-]/g, '_');
+      source_url = safeName;
       finalContentType = 'pdf';
       type = type === 'article' ? 'paper' : type; // default to paper for pdf
     } catch (err) {
@@ -70,7 +71,7 @@ router.post('/stages/:stageId/items', upload.single('pdf'), async (req, res) => 
           const minutes = Math.floor(currentStartTime / 1000 / 60);
           const seconds = Math.floor((currentStartTime / 1000) % 60).toString().padStart(2, '0');
           const timeStr = `${minutes}:${seconds}`;
-          paragraphs.push(`<h3>${timeStr}</h3><p>${currentPara.join(' ')}</p>`);
+          paragraphs.push(`<h3>${escHtml(timeStr)}</h3><p>${escHtml(currentPara.join(' '))}</p>`);
           currentPara = [];
         }
       }
@@ -87,7 +88,7 @@ router.post('/stages/:stageId/items', upload.single('pdf'), async (req, res) => 
   // Manual paste mode
   else if (!source_url && content_html) {
     title = titleOverride?.trim() || 'Untitled';
-    finalHtml = content_html;
+    finalHtml = sanitizeHtml(content_html);
     finalText = content_text || '';
     finalContentType = 'paste';
   } 

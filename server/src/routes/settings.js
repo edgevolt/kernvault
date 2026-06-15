@@ -1,7 +1,15 @@
 const express = require('express');
+const { randomUUID } = require('crypto');
 const { db } = require('../db');
 
 const router = express.Router();
+
+// Generated fresh on each server restart — must be fetched by the client before calling DELETE /api/data
+const ADMIN_TOKEN = randomUUID();
+
+router.get('/admin-token', (_req, res) => {
+  res.json({ token: ADMIN_TOKEN });
+});
 
 // GET /api/export — full JSON dump
 router.get('/export', (req, res) => {
@@ -45,10 +53,10 @@ router.get('/digest', (req, res) => {
 
 // DELETE /api/data — wipe everything
 router.delete('/data', (req, res) => {
-  const { confirm } = req.body;
-  if (confirm !== 'DELETE_ALL') {
+  const { confirm, token } = req.body;
+  if (confirm !== 'DELETE_ALL' || token !== ADMIN_TOKEN) {
     return res.status(400).json({
-      error: 'Send { confirm: "DELETE_ALL" } to confirm data deletion.',
+      error: 'Invalid confirmation. Fetch /api/admin-token and include it as { token } alongside { confirm: "DELETE_ALL" }.',
     });
   }
 

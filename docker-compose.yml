@@ -4,7 +4,7 @@ services:
     container_name: kernvault
     restart: unless-stopped
     ports:
-      - "9876:9876"
+      - "127.0.0.1:9876:9876"
     volumes:
       - kernvault_data:/app/data
     environment:

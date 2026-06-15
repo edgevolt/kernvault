@@ -73,7 +73,11 @@ async function fetchYouTubeTranscript(url, lang = 'en') {
   // Step 2: Prefer requested language, fall back to first available track
   const track = tracks.find(t => t.languageCode === lang) || tracks[0];
 
-  // Step 3: Fetch the timed-text XML
+  // Step 3: Fetch the timed-text XML — validate URL before fetching
+  const captionUrl = new URL(track.baseUrl);
+  if (captionUrl.protocol !== 'https:') {
+    throw new Error('Invalid caption URL scheme.');
+  }
   const xmlRes = await axios.get(track.baseUrl, { timeout: 12000 });
   const xml = xmlRes.data;
 

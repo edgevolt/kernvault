@@ -37,6 +37,10 @@ COPY --from=client-builder /build/client/dist ./client/dist
 # Data directory — mount a volume here for persistence
 RUN mkdir -p /app/data
 
+# Run as non-root user
+RUN addgroup -S kv && adduser -S kv -G kv && chown -R kv:kv /app
+USER kv
+
 # Expose the single port
 EXPOSE 9876
 

@@ -88,7 +88,10 @@ export const api = {
   // Settings / data
   getDigest:     () => request('GET', '/digest'),
   exportData:    () => fetch(`${BASE}/export`).then(r => r.blob()),
-  deleteAllData: () => request('DELETE', '/data', { confirm: 'DELETE_ALL' }),
+  deleteAllData: async () => {
+    const { token } = await request('GET', '/admin-token');
+    return request('DELETE', '/data', { confirm: 'DELETE_ALL', token });
+  },
 
   // Synthesis
   getSynthesisData:          (spaceId) => request('GET',    `/spaces/${spaceId}/synthesis`),

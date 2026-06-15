@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 // Initialise DB (runs migrations) on startup
@@ -21,16 +23,21 @@ const app = express();
 const PORT = process.env.PORT || 9876;
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
+app.use(helmet({ contentSecurityPolicy: false })); // CSP managed separately; other headers on
 app.use(cors({
   origin: [
     'http://localhost:5173',   // Vite dev server (primary)
     'http://localhost:5174',   // Vite dev server (fallback when 5173 is busy)
     'http://localhost:4173',   // Vite preview
-    'http://localhost:3000',   // prod build served by Express
   ],
   credentials: true,
 }));
 app.use(express.json({ limit: '50mb' })); // articles can be large
+
+// Global rate limit — 200 req/min per IP
+app.use('/api', rateLimit({ windowMs: 60_000, max: 200, standardHeaders: true, legacyHeaders: false }));
+// Tighter limit on expensive fetch/create routes
+app.use('/api/stages', rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false }));
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/spaces', spacesRouter);
@@ -57,7 +64,7 @@ if (fs.existsSync(DIST)) {
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 app.use((err, req, res, _next) => {
-  console.error(err);
+  console.error(err.message, err.stack);
   res.status(500).json({ error: 'Internal server error.' });
 });
 

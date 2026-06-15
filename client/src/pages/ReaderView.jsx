@@ -197,6 +197,11 @@ export default function ReaderView() {
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState(null);
   const [showDisplayMenu, setShowDisplayMenu] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportMode, setExportMode] = useState('annotated');
+  const [exportIncludeNotes, setExportIncludeNotes] = useState(true);
+  const [exportIncludeHighlights, setExportIncludeHighlights] = useState(true);
+  const [exportIncludePausePoints, setExportIncludePausePoints] = useState(true);
 
   // Session Timer state
   const [activeSeconds, setActiveSeconds] = useState(0);
@@ -460,6 +465,21 @@ export default function ReaderView() {
     setMobileAnnotation(null);
   };
 
+  function handleExportEpub() {
+    const params = new URLSearchParams({ mode: exportMode });
+    if (exportMode === 'annotated') {
+      params.set('includeNotes', exportIncludeNotes);
+      params.set('includeHighlights', exportIncludeHighlights);
+      params.set('includePausePoints', exportIncludePausePoints);
+    }
+    const a = document.createElement('a');
+    a.href = `/api/items/${item.id}/export/epub?${params}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setShowExportMenu(false);
+  }
+
   // Find current stage for breadcrumb
   const currentStage = space?.stages?.find(st =>
     (st.items || []).some(i => i.id === itemId)
@@ -624,6 +644,66 @@ export default function ReaderView() {
             </div>
           )}
 
+          {/* EPUB export */}
+          <div className="relative">
+            <button
+              className="btn-ghost btn-sm px-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              onClick={() => { setShowExportMenu(!showExportMenu); setShowDisplayMenu(false); }}
+              aria-label="Export to EPUB"
+              title="Export to EPUB"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-lg p-4 z-50 animate-fade-in outline-none shadow-zinc-200/50 dark:shadow-black/50">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-3">Export to EPUB</p>
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 block mb-1.5">Mode</span>
+                    <div className="flex bg-zinc-200/50 dark:bg-zinc-950 p-1 rounded-md gap-1">
+                      {[['annotated', 'With my notes'], ['clean', 'Clean copy']].map(([val, label]) => (
+                        <button
+                          key={val}
+                          onClick={() => setExportMode(val)}
+                          className={`flex-1 text-center py-1 rounded text-xs transition-all focus:outline-none ${exportMode === val ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100 font-medium' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {exportMode === 'annotated' && (
+                    <div className="space-y-2">
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400 block">Include</span>
+                      {[
+                        [exportIncludePausePoints, setExportIncludePausePoints, 'Pause point responses'],
+                        [exportIncludeNotes, setExportIncludeNotes, 'Notes'],
+                        [exportIncludeHighlights, setExportIncludeHighlights, 'Highlights'],
+                      ].map(([val, setter, label]) => (
+                        <label key={label} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={val}
+                            onChange={e => setter(e.target.checked)}
+                            className="rounded"
+                          />
+                          <span className="text-xs text-zinc-600 dark:text-zinc-400">{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <button onClick={handleExportEpub} className="btn-primary btn-sm w-full text-xs">
+                    Download EPUB
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             className={`btn-sm px-3 ${notesPanelOpen ? 'btn-primary' : 'btn-secondary'}`}
             onClick={toggleNotesPanel}
@@ -636,7 +716,7 @@ export default function ReaderView() {
       </header>
 
       {/* Content area */}
-      <main className={`pt-14 pb-24 ${FONT_FAMILIES[fontFamily] || 'font-sans'} ${FONT_SIZES[fontSize] || 'reading-md'}`} onClick={() => setShowDisplayMenu(false)}>
+      <main className={`pt-14 pb-24 ${FONT_FAMILIES[fontFamily] || 'font-sans'} ${FONT_SIZES[fontSize] || 'reading-md'}`} onClick={() => { setShowDisplayMenu(false); setShowExportMenu(false); }}>
         <div className="reading-column py-8">
           {/* Meta */}
           <div className="mb-6">
