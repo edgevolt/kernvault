@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [2.1.0] - 2026-06-14
 
+> **Requires Node.js 20+** (upgraded from 18 due to epub-gen-memory dependency on the `File` Web API global)
+
 ### Added
 - **EPUB export** — Articles can now be exported to EPUB format for reading on Kindle, reMarkable, Kobo, and other e-readers. A download icon in the reader toolbar opens an export panel with two modes:
   - *With my notes* — includes existing pause point responses, notes, and highlights

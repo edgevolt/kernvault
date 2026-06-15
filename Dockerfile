@@ -2,7 +2,7 @@
 
 
 # ─── Stage 1: Build the React client ─────────────────────────────────────────
-FROM node:18-alpine AS client-builder
+FROM node:20-alpine AS client-builder
 
 WORKDIR /build/client
 
@@ -16,7 +16,7 @@ RUN npm run build
 
 
 # ─── Stage 2: Production image ────────────────────────────────────────────────
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 LABEL org.opencontainers.image.source="https://github.com/edgevolt/kernvault"
 
 # Install native build tools needed by better-sqlite3
