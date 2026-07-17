@@ -192,29 +192,59 @@ export function renderHighlights(container, highlights, onHighlightClick, onHigh
   }
 }
 
-// Sentence splitting for mobile
-export function splitSentences(text) {
+// Sentence splitting. Also caps oversized chunks (e.g. long runs with no `.!?`)
+// at `maxLen` so no single TTS synthesis call is huge — this shrinks per-chunk
+// latency and time-to-first-audio. The cap lives here (the single source of truth)
+// so the TTS sentence array and the DOM spans built from it by wrapSentencesInDOM
+// stay index-aligned. Splits prefer a comma/whitespace boundary and keep offsets
+// contiguous so the read-along highlight still lines up.
+export function splitSentences(text, maxLen = 300) {
   const regex = /([^.!?]+[.!?]+(?:\s|$))/g;
   let match;
-  const sentences = [];
+  const raw = [];
   let currentIndex = 0;
 
   while ((match = regex.exec(text)) !== null) {
     const str = match[0];
-    sentences.push({
+    raw.push({
       text: str,
       startOffset: currentIndex,
       endOffset: currentIndex + str.length
     });
     currentIndex += str.length;
   }
-  
+
   if (currentIndex < text.length) {
-    sentences.push({
+    raw.push({
       text: text.slice(currentIndex),
       startOffset: currentIndex,
       endOffset: text.length
     });
+  }
+
+  const sentences = [];
+  for (const s of raw) {
+    if (s.text.length <= maxLen) { sentences.push(s); continue; }
+    const t = s.text;
+    let pos = 0;
+    while (pos < t.length) {
+      let end = Math.min(pos + maxLen, t.length);
+      if (end < t.length) {
+        // Break on the last comma (preferred) or whitespace within the window;
+        // fall back to a hard split so we always make progress.
+        const window = t.slice(pos, end);
+        const comma = window.lastIndexOf(', ');
+        const space = window.lastIndexOf(' ');
+        if (comma > 0) end = pos + comma + 2;
+        else if (space > 0) end = pos + space + 1;
+      }
+      sentences.push({
+        text: t.slice(pos, end),
+        startOffset: s.startOffset + pos,
+        endOffset: s.startOffset + end
+      });
+      pos = end;
+    }
   }
   return sentences;
 }

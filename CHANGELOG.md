@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.1] - 2026-07-17
+
+### Fixed
+- **Read Aloud performance** — synthesis was running many times slower than realtime (multi-second delays per sentence) on some hosts because the native ONNX runtime failed to load and the engine silently fell back to a single-threaded WASM backend. The production image now installs the `libgomp1` runtime library the native runtime needs, so synthesis uses the native, multi-core backend. The server now logs the active backend at startup (with a clear warning if it ever falls back) and per-sentence timing, so a slow backend can't go unnoticed. On older CPUs without int8 acceleration, the model precision can be changed at build time via `--build-arg TTS_MODEL_DTYPE=fp32` (or `q4f16`).
+- **Read Aloud responsiveness** — the model and first sentence are now warmed in the background as soon as a reader with read-aloud enabled is opened, and playback pre-fetches two sentences ahead, so speech starts sooner and stays ahead. Very long unpunctuated passages are split into smaller chunks to shorten time-to-first-audio.
+- **Read-along highlight sync** — the spoken-sentence highlight now advances when a sentence actually begins playing rather than when it is queued, so it no longer runs ahead of the audio during synthesis.
+- **Highlighting in Firefox** — creating a highlight from the selection toolbar did nothing in Firefox because the click was lost when the text selection collapsed. The action now fires reliably, and a failed save surfaces a visible message instead of failing silently.
+
 ## [2.2.0] - 2026-07-16
 
 ### Added

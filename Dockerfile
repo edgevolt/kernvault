@@ -40,9 +40,12 @@ RUN node fetch-model.mjs --out /model/out --id "$TTS_MODEL_ID" \
 FROM node:20-slim AS production
 LABEL org.opencontainers.image.source="https://github.com/edgevolt/kernvault"
 
-# Install native build tools needed by better-sqlite3 (and onnxruntime-node)
+# Install native build tools needed by better-sqlite3 (and onnxruntime-node).
+# libgomp1 is the OpenMP runtime the native onnxruntime-node binary dlopen()s at
+# runtime; without it the native backend fails to load and @huggingface/transformers
+# SILENTLY falls back to the single-threaded WASM backend — 10-30x slower synthesis.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 make g++ \
+  && apt-get install -y --no-install-recommends python3 make g++ libgomp1 \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

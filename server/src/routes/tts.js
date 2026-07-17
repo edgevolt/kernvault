@@ -8,6 +8,16 @@ router.get('/tts/status', (req, res) => {
   res.json(engine.getStatus());
 });
 
+// Kick off model load + inference warmup in the background so the first real
+// synthesis doesn't pay the cold-start cost. Fire-and-forget: respond immediately.
+router.post('/tts/warmup', (req, res) => {
+  if (!engine.getStatus().enabled) {
+    return res.status(503).json({ error: 'Text-to-speech is not enabled on this server.' });
+  }
+  engine.warmup(); // memoized; never awaited here
+  res.status(202).json({ warming: true });
+});
+
 // Synthesize one chunk of text (typically a sentence) to WAV audio, in-process.
 router.post('/tts', async (req, res) => {
   if (!engine.getStatus().enabled) {

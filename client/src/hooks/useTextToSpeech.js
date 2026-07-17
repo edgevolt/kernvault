@@ -100,7 +100,6 @@ export function useTextToSpeech({ sentences = [], voice, rate, onIndexChange } =
       if (run !== runRef.current) return;               // superseded
       if (i < 0 || i >= sents.length) { stop(); return; } // finished
 
-      setIndex(i);
       setStatus('loading');
 
       let url;
@@ -117,12 +116,16 @@ export function useTextToSpeech({ sentences = [], voice, rate, onIndexChange } =
       audio.onended = () => { if (run === runRef.current) step(i + 1); };
       try {
         await audio.play();
-        if (run === runRef.current) setStatus('speaking');
+        // Advance the read-along highlight only once audio for sentence i is
+        // actually playing — not when it was scheduled — so the highlight tracks
+        // what's audible instead of jumping a synthesis-latency ahead on a cache miss.
+        if (run === runRef.current) { setIndex(i); setStatus('speaking'); }
       } catch {
         // Autoplay blocked etc. — leave in loading; user can retry.
       }
-      // Warm the next sentence so playback stays ahead.
+      // Warm the next couple of sentences so playback stays ahead on slow CPUs.
       ensureAudio(i + 1).catch(() => {});
+      ensureAudio(i + 2).catch(() => {});
     };
 
     step(start);
@@ -144,6 +147,14 @@ export function useTextToSpeech({ sentences = [], voice, rate, onIndexChange } =
   const next = useCallback(() => playFrom((currentIndex < 0 ? 0 : currentIndex) + 1), [currentIndex, playFrom]);
   const prev = useCallback(() => playFrom(Math.max(0, (currentIndex < 0 ? 0 : currentIndex) - 1)), [currentIndex, playFrom]);
   const seekTo = useCallback((i) => playFrom(i), [playFrom]);
+
+  // Warm the server model + first sentence in the background so the first press of
+  // play is responsive. Safe to call repeatedly; no-ops until the server is available.
+  const prime = useCallback(() => {
+    if (!available) return;
+    api.warmupTts();
+    ensureAudio(0).catch(() => {});
+  }, [available, ensureAudio]);
 
   // Reset when the source sentences change (e.g. switching articles).
   useEffect(() => {
@@ -167,5 +178,6 @@ export function useTextToSpeech({ sentences = [], voice, rate, onIndexChange } =
     next,
     prev,
     seekTo,
+    prime,
   };
 }

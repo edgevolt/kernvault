@@ -399,6 +399,14 @@ Synthesized audio is cached under `data/tts-cache/` (regenerable, safe to delete
 building their own image can pin the model revision or omit it — see
 [`server/models/README.md`](server/models/README.md).
 
+**Performance.** The server logs the active ONNX backend at startup: `native onnxruntime-node`
+(fast, uses all CPU cores) or a warning that it fell back to the slower single-threaded WASM
+backend, plus per-sentence timing. If synthesis is slow even on the native backend — common on
+older CPUs without int8 acceleration (no AVX-512/VNNI) — rebuild the image with a different model
+precision: `docker build --build-arg TTS_MODEL_DTYPE=fp32` (or `q4f16`). `TTS_MODEL_DTYPE` is a
+**build-time** choice: the matching model file is fetched into the image at build, so setting it
+only at runtime has no effect unless that precision was baked in.
+
 ---
 
 ## Data and Privacy

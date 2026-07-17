@@ -95,6 +95,9 @@ export const api = {
 
   // Text-to-speech (local, server-side)
   getTtsStatus: () => request('GET', '/tts/status'),
+  // Fire-and-forget: ask the server to warm the model in the background. Never
+  // throws — a slow/unavailable warmup must not block the reader.
+  warmupTts: () => fetch(`${BASE}/tts/warmup`, { method: 'POST' }).catch(() => {}),
   synthesizeTts: (body) =>
     fetch(`${BASE}/tts`, {
       method: 'POST',

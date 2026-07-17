@@ -197,6 +197,7 @@ export default function ReaderView() {
   const [space, setSpace]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState(null);
+  const [highlightError, setHighlightError] = useState(''); // transient toast for highlight-save failures
   const [showDisplayMenu, setShowDisplayMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showTtsMenu, setShowTtsMenu] = useState(false);
@@ -322,6 +323,12 @@ export default function ReaderView() {
   // Read-aloud runs only when the server supports it (capability) AND the user
   // has turned it on in the display menu (per-browser preference).
   const ttsActive = tts.available && (settings.ttsEnabled ?? false);
+
+  // Warm the model + first sentence in the background as soon as a reader with
+  // read-aloud enabled loads, so the first press of play isn't a cold start.
+  useEffect(() => {
+    if (ttsActive && ttsSentences.length > 0) tts.prime();
+  }, [ttsActive, ttsSentences, tts.prime]);
 
   // Wrap sentences and render highlights whenever content or font size changes
   useEffect(() => {
@@ -463,6 +470,9 @@ export default function ReaderView() {
       }
     } catch (err) {
       console.error(err);
+      // Surface the failure so it isn't silent (previously the user just saw nothing happen).
+      setHighlightError('Could not save highlight. Please try again.');
+      setTimeout(() => setHighlightError(''), 4000);
     }
   };
 
@@ -956,12 +966,24 @@ export default function ReaderView() {
             <button 
               className="p-1.5 hover:bg-zinc-800 rounded transition-colors text-yellow-400"
               title="Highlight this passage"
-              onMouseDown={(e) => e.preventDefault()}  /* belt-and-suspenders for Firefox */
-              onClick={() => handleCreateHighlight(selection.start_offset, selection.end_offset, selection.text)}
+              /* Fire on mousedown, not click: in Firefox the selection can collapse and
+                 unmount this toolbar between mousedown and click, so onClick never runs.
+                 mousedown fires first, and preventDefault keeps the selection intact. */
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleCreateHighlight(selection.start_offset, selection.end_offset, selection.text);
+              }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Transient error toast (e.g. a highlight failed to save) */}
+      {highlightError && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in bg-red-600 text-white text-sm rounded-lg shadow-xl px-4 py-2">
+          {highlightError}
         </div>
       )}
 

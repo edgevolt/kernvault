@@ -14,6 +14,7 @@
  */
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const crypto = require('crypto');
 const { DATA_DIR } = require('../db');
 
@@ -90,22 +91,70 @@ function release() {
   if (next) next();
 }
 
+// Report whether the native onnxruntime-node binding is actually loadable. If it
+// is NOT, @huggingface/transformers silently falls back to the single-threaded
+// WASM backend — which is 10-30x slower and is the classic cause of multi-second
+// per-chunk synthesis on an otherwise-idle multicore host. We log this loudly so
+// "silently slow" can never happen unnoticed again.
+function probeNativeBackend() {
+  try {
+    const ort = require('onnxruntime-node');
+    return { native: typeof ort.InferenceSession === 'function', version: ort.version || 'unknown', error: null };
+  } catch (err) {
+    return { native: false, version: null, error: err.message };
+  }
+}
+
 async function loadModel() {
   if (ttsPromise) return ttsPromise;
   ttsPromise = (async () => {
+    const t0 = Date.now();
     const { KokoroTTS } = await import('kokoro-js');
     const { env } = await import('@huggingface/transformers');
     // Privacy invariant: never touch the network. Load only vendored local files.
     env.allowRemoteModels = false;
     env.allowLocalModels = true;
     env.localModelPath = MODELS_DIR;
-    return KokoroTTS.from_pretrained(MODEL_ID, { dtype: MODEL_DTYPE, device: 'cpu' });
+    const model = await KokoroTTS.from_pretrained(MODEL_ID, { dtype: MODEL_DTYPE, device: 'cpu' });
+
+    const backend = probeNativeBackend();
+    const cores = os.cpus().length;
+    console.log(`[tts] model loaded in ${Date.now() - t0}ms (dtype=${MODEL_DTYPE}, cores=${cores})`);
+    if (backend.native) {
+      console.log(`[tts] ONNX backend: native onnxruntime-node v${backend.version} (uses all ${cores} cores)`);
+    } else {
+      console.warn(
+        `[tts] WARNING: native onnxruntime-node did NOT load (${backend.error}). ` +
+        `Synthesis is likely running on the single-threaded WASM backend and will be very slow. ` +
+        `Ensure onnxruntime-node and its runtime libs (e.g. libgomp1) are present in the image.`
+      );
+    }
+    return model;
   })().catch((err) => {
     loadFailed = true;
     ttsPromise = null;
     throw err;
   });
   return ttsPromise;
+}
+
+// Eagerly load the model (and warm the inference path with one tiny throwaway
+// synthesis) so the first real request doesn't pay the cold-start cost. Safe to
+// call repeatedly/concurrently: the model load is memoized and the warm synth
+// runs at most once. No-op when TTS is unavailable on this host.
+let warmedPromise = null;
+function warmup() {
+  if (OPERATOR_DISABLED || !modelPresent() || loadFailed) return Promise.resolve();
+  if (warmedPromise) return warmedPromise;
+  warmedPromise = (async () => {
+    const tts = await loadModel();
+    await tts.generate('Warming up.', { voice: DEFAULT_VOICE, speed: 1.0 });
+    console.log('[tts] warmup complete — model ready.');
+  })().catch((err) => {
+    warmedPromise = null; // allow a retry on the next trigger
+    console.warn('[tts] warmup failed:', err.message);
+  });
+  return warmedPromise;
 }
 
 function cachePath(text, voice, speed) {
@@ -127,14 +176,26 @@ async function synthesize(text, { voice, rate } = {}) {
   const cp = cachePath(text, v, speed);
 
   try {
-    if (fs.existsSync(cp)) return await fs.promises.readFile(cp);
+    if (fs.existsSync(cp)) {
+      console.log(`[tts] cache hit (${text.length} chars)`);
+      return await fs.promises.readFile(cp);
+    }
   } catch { /* fall through to synthesize */ }
 
   await acquire();
   try {
     const tts = await loadModel();
+    const t0 = Date.now();
     const audio = await tts.generate(text, { voice: v, speed });
     const wav = Buffer.from(audio.toWav());
+    // Real-time factor = synthesis wall time / produced audio duration. RTF < 1
+    // means faster than realtime (good); RTF >> 1 means playback will stall.
+    const ms = Date.now() - t0;
+    const audioSec = audio.audio?.length && audio.sampling_rate
+      ? audio.audio.length / audio.sampling_rate
+      : 0;
+    const rtf = audioSec > 0 ? (ms / 1000 / audioSec).toFixed(2) : '?';
+    console.log(`[tts] synth ${text.length} chars in ${ms}ms (${audioSec.toFixed(1)}s audio, RTF ${rtf})`);
     // Best-effort cache write; never block the response on it.
     fs.promises
       .mkdir(CACHE_DIR, { recursive: true })
@@ -146,4 +207,4 @@ async function synthesize(text, { voice, rate } = {}) {
   }
 }
 
-module.exports = { getStatus, synthesize, MAX_TEXT_LEN };
+module.exports = { getStatus, synthesize, warmup, MAX_TEXT_LEN };
