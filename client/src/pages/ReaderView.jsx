@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useStore } from '../store/useStore';
 import { useReadingProgress } from '../hooks/useReadingProgress';
+import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { getSelectionOffsets, renderHighlights, splitSentences, wrapSentencesInDOM } from '../utils/highlighting';
 import PausePoint from '../components/PausePoint';
 import CompletionGate from '../components/CompletionGate';
@@ -198,6 +199,7 @@ export default function ReaderView() {
   const [error, setError]   = useState(null);
   const [showDisplayMenu, setShowDisplayMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showTtsMenu, setShowTtsMenu] = useState(false);
   const [exportMode, setExportMode] = useState('annotated');
   const [exportIncludeNotes, setExportIncludeNotes] = useState(true);
   const [exportIncludeHighlights, setExportIncludeHighlights] = useState(true);
@@ -289,6 +291,38 @@ export default function ReaderView() {
     }
   }, [isMobile, item?.content_text]);
 
+  // ── Read-aloud (local text-to-speech) ───────────────────────────────────────
+  // Sentences drive both synthesis order and read-along highlighting.
+  const ttsSentences = useMemo(
+    () => (item?.content_text ? splitSentences(item.content_text) : []),
+    [item?.content_text]
+  );
+
+  // Highlight the sentence currently being spoken (inline style → theme-neutral,
+  // no CSS file needed). A sentence may map to multiple spans, so clear/set all.
+  const spokenSpansRef = useRef([]);
+  const handleSpeakIndex = useCallback((i) => {
+    const container = articleRef.current;
+    spokenSpansRef.current.forEach((s) => { s.style.backgroundColor = ''; });
+    spokenSpansRef.current = [];
+    if (!container || i < 0) return;
+    const spans = container.querySelectorAll(`span[data-sentence-index="${i}"]`);
+    spans.forEach((s) => { s.style.backgroundColor = 'rgba(250, 204, 21, 0.35)'; });
+    spokenSpansRef.current = Array.from(spans);
+    if (spans[0]) spans[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, []);
+
+  const tts = useTextToSpeech({
+    sentences: ttsSentences,
+    voice: settings.ttsVoice || 'af_heart',
+    rate: settings.ttsRate ?? 1.0,
+    onIndexChange: handleSpeakIndex,
+  });
+
+  // Read-aloud runs only when the server supports it (capability) AND the user
+  // has turned it on in the display menu (per-browser preference).
+  const ttsActive = tts.available && (settings.ttsEnabled ?? false);
+
   // Wrap sentences and render highlights whenever content or font size changes
   useEffect(() => {
     if (!articleRef.current || !item) return;
@@ -296,6 +330,9 @@ export default function ReaderView() {
     const tid = setTimeout(() => {
       if (isMobile && mobileSentences.length > 0) {
         wrapSentencesInDOM(articleRef.current, mobileSentences);
+      } else if (ttsActive && ttsSentences.length > 0) {
+        // Wrap sentences on desktop too so read-aloud can highlight them.
+        wrapSentencesInDOM(articleRef.current, ttsSentences);
       }
       renderHighlights(
         articleRef.current,
@@ -322,7 +359,7 @@ export default function ReaderView() {
       );
     }, 100); // Wait for React to flush DOM
     return () => clearTimeout(tid);
-  }, [item, segments, highlights, fontSize, isMobile, mobileSentences, itemId, removeHighlight]);
+  }, [item, segments, highlights, fontSize, isMobile, mobileSentences, itemId, removeHighlight, ttsActive, ttsSentences]);
 
   // Native selection handling (Mouse/Trackpad)
   useEffect(() => {
@@ -605,7 +642,7 @@ export default function ReaderView() {
           </Link>
           <button
             className="btn-ghost btn-sm px-2 font-medium"
-            onClick={() => setShowDisplayMenu(!showDisplayMenu)}
+            onClick={() => { setShowDisplayMenu(!showDisplayMenu); setShowExportMenu(false); setShowTtsMenu(false); }}
             aria-label="Display settings"
             title="Display settings"
             id="reader-font-toggle"
@@ -640,7 +677,122 @@ export default function ReaderView() {
                     <option value="mono">Monospace</option>
                   </select>
                 </div>
+                {tts.available && (
+                  <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-zinc-600 dark:text-zinc-300">Read aloud</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={settings.ttsEnabled ?? false}
+                        aria-label="Toggle read aloud"
+                        onClick={() => {
+                          const nextOn = !(settings.ttsEnabled ?? false);
+                          updateSettings({ ttsEnabled: nextOn });
+                          if (!nextOn) { tts.stop(); setShowTtsMenu(false); }
+                        }}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${(settings.ttsEnabled ?? false) ? 'bg-blue-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${(settings.ttsEnabled ?? false) ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1.5">Play articles as speech, generated locally on the server. A ▶ control appears in the toolbar.</p>
+                  </div>
+                )}
               </div>
+            </div>
+          )}
+
+          {/* Read aloud (local text-to-speech) */}
+          {ttsActive && (
+            <div className="relative">
+              <button
+                className={`btn-ghost btn-sm px-2 ${tts.isPlaying ? 'text-blue-500 dark:text-blue-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                onClick={() => { setShowTtsMenu(!showTtsMenu); setShowDisplayMenu(false); setShowExportMenu(false); }}
+                aria-label="Read aloud"
+                title="Read aloud"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                </svg>
+              </button>
+              {showTtsMenu && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-lg p-4 z-50 animate-fade-in outline-none shadow-zinc-200/50 dark:shadow-black/50">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-3">Read aloud</p>
+                  <div className="space-y-4">
+                    {/* Transport */}
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => tts.prev()}
+                        className="btn-ghost btn-sm px-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                        aria-label="Previous sentence" title="Previous sentence"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                      </button>
+                      <button
+                        onClick={() => (tts.isPlaying ? tts.pause() : tts.play())}
+                        className="btn-primary btn-sm px-4"
+                        aria-label={tts.isPlaying ? 'Pause' : 'Play'}
+                      >
+                        {tts.status === 'loading' ? (
+                          <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round"/></svg>
+                        ) : tts.isPlaying ? (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+                        ) : (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => tts.next()}
+                        className="btn-ghost btn-sm px-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                        aria-label="Next sentence" title="Next sentence"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 6l8.5 6L6 18z"/></svg>
+                      </button>
+                      <button
+                        onClick={() => tts.stop()}
+                        className="btn-ghost btn-sm px-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                        aria-label="Stop" title="Stop"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+                      </button>
+                    </div>
+                    {tts.status === 'error' && (
+                      <p className="text-[11px] text-red-500 dark:text-red-400 text-center">Couldn’t generate audio. Try again.</p>
+                    )}
+                    {/* Voice */}
+                    <div>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400 block mb-1.5">Voice</span>
+                      <select
+                        className="select w-full text-xs py-1.5 min-h-[36px]"
+                        value={settings.ttsVoice || 'af_heart'}
+                        onChange={(e) => updateSettings({ ttsVoice: e.target.value })}
+                      >
+                        {tts.voices.map((v) => (
+                          <option key={v.id} value={v.id}>{v.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {/* Speed */}
+                    <div>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400 block mb-1.5">Speed</span>
+                      <div className="flex bg-zinc-200/50 dark:bg-zinc-950 p-1 rounded-md gap-1">
+                        {[0.75, 1.0, 1.25, 1.5].map((sp) => (
+                          <button
+                            key={sp}
+                            onClick={() => updateSettings({ ttsRate: sp })}
+                            className={`flex-1 text-center py-1 rounded text-xs transition-all focus:outline-none ${(settings.ttsRate ?? 1.0) === sp ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100 font-medium' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}
+                          >
+                            {sp}×
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -648,7 +800,7 @@ export default function ReaderView() {
           <div className="relative">
             <button
               className="btn-ghost btn-sm px-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-              onClick={() => { setShowExportMenu(!showExportMenu); setShowDisplayMenu(false); }}
+              onClick={() => { setShowExportMenu(!showExportMenu); setShowDisplayMenu(false); setShowTtsMenu(false); }}
               aria-label="Export to EPUB"
               title="Export to EPUB"
             >
@@ -716,7 +868,7 @@ export default function ReaderView() {
       </header>
 
       {/* Content area */}
-      <main className={`pt-14 pb-24 ${FONT_FAMILIES[fontFamily] || 'font-sans'} ${FONT_SIZES[fontSize] || 'reading-md'}`} onClick={() => { setShowDisplayMenu(false); setShowExportMenu(false); }}>
+      <main className={`pt-14 pb-24 ${FONT_FAMILIES[fontFamily] || 'font-sans'} ${FONT_SIZES[fontSize] || 'reading-md'}`} onClick={() => { setShowDisplayMenu(false); setShowExportMenu(false); setShowTtsMenu(false); }}>
         <div className="reading-column py-8">
           {/* Meta */}
           <div className="mb-6">

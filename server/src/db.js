@@ -229,4 +229,4 @@ function getSpaceIdForItem(itemId) {
   return row ? row.space_id : null;
 }
 
-module.exports = { db, touchSpace, getSpaceIdForStage, getSpaceIdForItem };
+module.exports = { db, DATA_DIR, touchSpace, getSpaceIdForStage, getSpaceIdForItem };

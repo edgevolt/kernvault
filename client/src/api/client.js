@@ -93,6 +93,22 @@ export const api = {
     return request('DELETE', '/data', { confirm: 'DELETE_ALL', token });
   },
 
+  // Text-to-speech (local, server-side)
+  getTtsStatus: () => request('GET', '/tts/status'),
+  synthesizeTts: (body) =>
+    fetch(`${BASE}/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(async (r) => {
+      if (!r.ok) {
+        let msg = `TTS HTTP ${r.status}`;
+        try { msg = (await r.json()).error || msg; } catch { /* non-JSON */ }
+        throw new Error(msg);
+      }
+      return r.blob();
+    }),
+
   // Synthesis
   getSynthesisData:          (spaceId) => request('GET',    `/spaces/${spaceId}/synthesis`),
   createSynthesisNode:       (body)    => request('POST',   '/synthesis/nodes', body),

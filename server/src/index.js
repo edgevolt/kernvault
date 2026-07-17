@@ -18,6 +18,7 @@ const searchRouter      = require('./routes/search');
 const exportRouter      = require('./routes/export');
 const highlightsRouter  = require('./routes/highlights');
 const synthesisRouter   = require('./routes/synthesis');
+const ttsRouter         = require('./routes/tts');
 
 const app = express();
 const PORT = process.env.PORT || 9876;
@@ -38,6 +39,8 @@ app.use(express.json({ limit: '50mb' })); // articles can be large
 app.use('/api', rateLimit({ windowMs: 60_000, max: 200, standardHeaders: true, legacyHeaders: false }));
 // Tighter limit on expensive fetch/create routes
 app.use('/api/stages', rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false }));
+// TTS synthesizes per sentence — allow a higher burst (playback paces itself; cache absorbs re-listens)
+app.use('/api/tts', rateLimit({ windowMs: 60_000, max: 120, standardHeaders: true, legacyHeaders: false }));
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/spaces', spacesRouter);
@@ -48,6 +51,7 @@ app.use('/api', searchRouter);         // /api/search?q=
 app.use('/api', settingsRouter);       // /api/export and /api/data — MUST be before items
 app.use('/api', learningMapRouter);    // /api/spaces/:id/map, /api/item-connections/:id, /api/templates
 app.use('/api', synthesisRouter);      // /api/spaces/:id/synthesis, /api/synthesis/nodes, /api/synthesis/connections
+app.use('/api', ttsRouter);            // /api/tts/status and /api/tts
 app.use('/api', itemsRouter);          // /api/stages/:id/items and /api/items/:id
 app.use('/api', notesRouter);          // /api/items/:id/notes and /api/notes/:id
 app.use('/api', pausePointsRouter);    // /api/items/:id/pause-points and /api/pause-points/:id

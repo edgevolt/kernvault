@@ -9,6 +9,15 @@ services:
       - kernvault_data:/app/data
     environment:
       - PORT=9876
+      # ── Read-aloud (local text-to-speech) ────────────────────────────────
+      # Fully local & private: a small neural model (baked into the image) runs
+      # in-process on the host CPU; no text or audio is ever sent to any third
+      # party. It's AVAILABLE by default, but nothing runs until a user turns
+      # "Read aloud" on in the reader's display menu (per-browser). Uncomment the
+      # line below to HARD-DISABLE it server-wide on a low-power host.
+      # - TTS_ENABLED=false
+      # Optional: cap concurrent synthesis on the host CPU (default 1).
+      # - TTS_MAX_CONCURRENCY=1
 
 volumes:
   kernvault_data:

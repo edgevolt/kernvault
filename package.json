@@ -1,6 +1,6 @@
 {
   "name": "kernvault",
-  "version": "2.0.1",
+  "version": "2.2.0",
   "private": true,
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run client\"",

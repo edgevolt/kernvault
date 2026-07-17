@@ -21,6 +21,9 @@ const defaultSettings = {
   fontFamily: 'sans',    // sans | serif | mono
   darkMode: 'system',   // system | light | dark
   voiceEnabled: false,
+  ttsEnabled: false,    // read-aloud on/off (per-browser; only usable when the server reports it available)
+  ttsVoice: 'af_heart', // read-aloud voice id (server validates)
+  ttsRate: 1.0,         // read-aloud speed (0.5–2.0)
   aiEnabled: false,
   aiProvider: 'openai', // openai | anthropic | ollama
   aiApiKey: '',
