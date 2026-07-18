@@ -24,7 +24,7 @@ Build-time knobs (maintainers, via `--build-arg`):
 |-----------|---------|---------|
 | `TTS_MODEL_ID` | `onnx-community/Kokoro-82M-v1.0-ONNX` | Model repo to fetch. |
 | `TTS_MODEL_REVISION` | `main` | **Pin to a commit** for reproducible builds. |
-| `TTS_MODEL_DTYPE` | `q8` | Quantization variant to download + run. |
+| `TTS_MODEL_DTYPE` | `fp32` | Precision variant to download + run (`fp32` is fastest on CPUs without int8 acceleration; `q4f16` is smaller; `q8` is int8). |
 | `SKIP_TTS_MODEL` | *(unset)* | Set to `1` to build a lean image without the model. |
 
 ## Manual layout (local development without Docker only)
@@ -49,7 +49,7 @@ server/models/
         ├── config.json
         ├── tokenizer.json          (and other config/tokenizer files)
         ├── onnx/
-        │   └── model_quantized.onnx   (int8 — matches TTS_MODEL_DTYPE=q8)
+        │   └── model.onnx             (fp32 — filename matches TTS_MODEL_DTYPE; q8 → model_quantized.onnx)
         └── voices/                     (per-voice .bin files)
 ```
 
@@ -93,7 +93,7 @@ Hub reports for that revision (build fails on mismatch). Recommended extra hygie
 |-----|---------|---------|
 | `TTS_ENABLED` | *(unset = available)* | Set to `false` to hard-disable read-aloud server-wide. |
 | `TTS_MODEL_ID` | `onnx-community/Kokoro-82M-v1.0-ONNX` | Model folder under `server/models`. |
-| `TTS_MODEL_DTYPE` | `q8` | Quantization (`q8` int8 = low RAM/CPU; `fp32` = larger/slower). |
+| `TTS_MODEL_DTYPE` | `fp32` | Precision. `fp32` = fastest on CPUs without int8 acceleration; `q4f16` = smaller; `q8` (int8) = low RAM but emulated/slow without AVX-512/VNNI. Must match the baked-in model file. |
 | `TTS_MODELS_DIR` | `server/models` | Local model root (`localModelPath`). |
 | `TTS_MAX_CONCURRENCY` | `1` | Max concurrent synthesis on the host CPU. |
 

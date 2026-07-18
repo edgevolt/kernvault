@@ -10,7 +10,7 @@
  * (`allowRemoteModels = false`).
  *
  * Usage:
- *   node fetch-model.mjs --out ./out --id <repo> --revision <rev> --dtype q8 [--skip]
+ *   node fetch-model.mjs --out ./out --id <repo> --revision <rev> --dtype fp32 [--skip]
  *
  * `--skip` (or SKIP_TTS_MODEL=1) creates an empty output dir and exits 0, so a
  * lean image can be built without the model (read-aloud then reports disabled).
@@ -37,7 +37,7 @@ const ID    = args.id || 'onnx-community/Kokoro-82M-v1.0-ONNX';
 // Pin to an immutable commit SHA (not a mutable tag like `main`) so builds are
 // reproducible and the sha256 checks below verify a known snapshot.
 const REV   = args.revision || '1939ad2a8e416c0acfeecc08a694d14ef25f2231';
-const DTYPE = args.dtype || 'q8';
+const DTYPE = args.dtype || 'fp32';
 const OUT   = args.out || './out';
 const SKIP  = args.skip || process.env.SKIP_TTS_MODEL === '1' || process.env.SKIP_TTS_MODEL === 'true';
 const HF    = process.env.HF_ENDPOINT || 'https://huggingface.co';

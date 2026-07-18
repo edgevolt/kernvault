@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.2] - 2026-07-17
+
+### Changed
+- **Read Aloud is now much faster on CPUs without int8 acceleration** — the default model precision changed from int8 (`q8`) to **`fp32`**. On processors without AVX-512/VNNI (e.g. older Intel desktops), int8 is *emulated* and runs slower than realtime, causing per-sentence lag; `fp32` is ~2× faster there (measured real-time factor ~0.5–0.8 vs ~1.3–1.5 for `q8` on an i5-7500T). A smaller `q4f16` build remains available via `--build-arg TTS_MODEL_DTYPE=q4f16`. Setting `TTS_MODEL_DTYPE` at build time now re-bakes the model **and** sets the matching runtime precision in one step, so the baked-in model and the running precision can no longer drift apart. (The `fp32` model adds ~0.9 GB to the image and ~250 MB RAM — negligible for a self-hosted single container.)
+
 ## [2.2.1] - 2026-07-17
 
 ### Fixed

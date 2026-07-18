@@ -23,7 +23,7 @@ const { DATA_DIR } = require('../db');
 // (Whether read-aloud actually runs is a separate per-user in-app toggle.)
 const OPERATOR_DISABLED = process.env.TTS_ENABLED === 'false';
 const MODEL_ID      = process.env.TTS_MODEL_ID || 'onnx-community/Kokoro-82M-v1.0-ONNX';
-const MODEL_DTYPE   = process.env.TTS_MODEL_DTYPE || 'q8'; // quantized int8: low RAM/CPU
+const MODEL_DTYPE   = process.env.TTS_MODEL_DTYPE || 'fp32'; // fp32 default: int8 (q8) is emulated/slow on CPUs without AVX-512/VNNI
 const MAX_CONCURRENCY = Math.max(1, parseInt(process.env.TTS_MAX_CONCURRENCY || '1', 10));
 // Directory that CONTAINS the `<MODEL_ID>` folder (transformers.js resolves
 // `${localModelPath}/${MODEL_ID}`). Vendor the model there in the image.

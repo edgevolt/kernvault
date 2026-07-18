@@ -26,7 +26,11 @@ WORKDIR /model
 ARG TTS_MODEL_ID=onnx-community/Kokoro-82M-v1.0-ONNX
 # Pinned to an immutable commit SHA for reproducible, verifiable builds.
 ARG TTS_MODEL_REVISION=1939ad2a8e416c0acfeecc08a694d14ef25f2231
-ARG TTS_MODEL_DTYPE=q8
+# fp32 is the default: int8 (q8) has no hardware acceleration on CPUs without
+# AVX-512/VNNI (e.g. older Intel), where it is EMULATED and ~2-3x SLOWER than fp32.
+# Override with --build-arg TTS_MODEL_DTYPE=q4f16 (smaller) or q8 (only faster on
+# newer server CPUs with VNNI).
+ARG TTS_MODEL_DTYPE=fp32
 ARG SKIP_TTS_MODEL=
 COPY server/scripts/fetch-model.mjs ./fetch-model.mjs
 RUN node fetch-model.mjs --out /model/out --id "$TTS_MODEL_ID" \
@@ -39,6 +43,13 @@ RUN node fetch-model.mjs --out /model/out --id "$TTS_MODEL_ID" \
 # portable between the two, so existing volumes upgrade in place with no data change.
 FROM node:20-slim AS production
 LABEL org.opencontainers.image.source="https://github.com/edgevolt/kernvault"
+
+# The same build arg both selects which ONNX file is baked in (model-fetch stage,
+# above) AND is exported as the runtime default here, so the server always loads the
+# precision that is actually present — no separate runtime env needed. A plain build
+# is fp32; pass --build-arg TTS_MODEL_DTYPE=… to change both in lockstep.
+ARG TTS_MODEL_DTYPE=fp32
+ENV TTS_MODEL_DTYPE=${TTS_MODEL_DTYPE}
 
 # Install native build tools needed by better-sqlite3 (and onnxruntime-node).
 # libgomp1 is the OpenMP runtime the native onnxruntime-node binary dlopen()s at

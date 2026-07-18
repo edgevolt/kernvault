@@ -19,9 +19,9 @@ services:
       # Optional: cap concurrent synthesis on the host CPU (default 1).
       # - TTS_MAX_CONCURRENCY=1
       # Speed: startup logs report the active ONNX backend ("native onnxruntime-node"
-      # = fast, all cores; a WASM warning = slow). If synthesis is slow despite the
-      # native backend on an older CPU (no AVX-512/VNNI), rebuild with a different
-      # model precision: docker build --build-arg TTS_MODEL_DTYPE=fp32 (or q4f16).
+      # = fast, all cores; a WASM warning = slow) and a per-sentence real-time factor.
+      # The image defaults to fp32 (fastest on CPUs without int8 acceleration). For a
+      # smaller image, rebuild with: docker build --build-arg TTS_MODEL_DTYPE=q4f16
 
 volumes:
   kernvault_data:

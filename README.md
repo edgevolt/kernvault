@@ -390,7 +390,7 @@ capability-vs-preference split:
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `TTS_ENABLED` | *(unset = available)* | Set to `false` to hard-disable read-aloud server-wide. |
-| `TTS_MODEL_DTYPE` | `q8` | Model quantization (`q8` int8 = low RAM/CPU). |
+| `TTS_MODEL_DTYPE` | `fp32` | Model precision. **Build-time** (a rebuild re-bakes the matching model). `fp32` is fastest on CPUs without int8 acceleration; `q4f16` is smaller; `q8` (int8) is only faster on newer CPUs with AVX-512/VNNI. |
 | `TTS_MAX_CONCURRENCY` | `1` | Max concurrent synthesis on the host CPU. |
 
 The baked-in model grows the image by ~80–170 MB, and synthesis uses the host CPU while audio
@@ -399,13 +399,13 @@ Synthesized audio is cached under `data/tts-cache/` (regenerable, safe to delete
 building their own image can pin the model revision or omit it — see
 [`server/models/README.md`](server/models/README.md).
 
-**Performance.** The server logs the active ONNX backend at startup: `native onnxruntime-node`
-(fast, uses all CPU cores) or a warning that it fell back to the slower single-threaded WASM
-backend, plus per-sentence timing. If synthesis is slow even on the native backend — common on
-older CPUs without int8 acceleration (no AVX-512/VNNI) — rebuild the image with a different model
-precision: `docker build --build-arg TTS_MODEL_DTYPE=fp32` (or `q4f16`). `TTS_MODEL_DTYPE` is a
-**build-time** choice: the matching model file is fetched into the image at build, so setting it
-only at runtime has no effect unless that precision was baked in.
+**Performance.** The server logs the active ONNX backend and per-sentence timing at startup:
+`native onnxruntime-node` (fast, uses all CPU cores) or a warning that it fell back to the slower
+single-threaded WASM backend, plus a real-time factor (RTF) per sentence — under 1.0 means
+synthesis is faster than playback. The default `fp32` is the fastest precision on CPUs without
+int8 acceleration (measured RTF ~0.5–0.8 on an i5-7500T, vs ~1.3–1.5 for `q8`). To trade a little speed
+for a smaller image, rebuild with `docker build --build-arg TTS_MODEL_DTYPE=q4f16` — the arg
+re-bakes the matching model file **and** sets the runtime precision to match, in one step.
 
 ---
 
